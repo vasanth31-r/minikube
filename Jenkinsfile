@@ -2,7 +2,9 @@ pipeline {
     agent any
 
     tools {
-        sonarScanner 'SonarScanner'
+        // Use the correct, full tool type as per the error message.
+        // The name "SonarScannertool" must match the name you configured in Jenkins.
+        hudson.plugins.sonar.SonarRunnerInstallation 'SonarScannertool'
     }
 
     stages {
@@ -15,8 +17,12 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarScannertool') { // Ensure this name matches your Jenkins configuration
+                    // This now correctly points to the tool you've named 'SonarScannertool'
+                    def scannerHome = tool 'SonarScannertool'
+                    
+                    // The 'withSonarQubeEnv' should use the name you gave to the SonarQube Server itself,
+                    // not the tool. Check Manage Jenkins -> Configure System for the correct name.
+                    withSonarQubeEnv('My Local SonarQube') { 
                         sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
                     }
                 }
@@ -26,13 +32,8 @@ pipeline {
         stage('Build and Push Docker Image') {
             steps {
                 script {
-                    // Use the Minikube Docker daemon
                     sh 'eval $(minikube docker-env)'
-                    
-                    // Build the Docker image
                     def appImage = docker.build("vasanth31r/minikube-app:${env.BUILD_NUMBER}", "./k8s")
-                    
-                    // Push the image to the Minikube's internal Docker registry
                     appImage.push()
                 }
             }
@@ -41,10 +42,7 @@ pipeline {
         stage('Deploy to Minikube') {
             steps {
                 script {
-                    // Update the deployment.yaml with the new image tag
                     sh "sed -i 's|vasanth31r/minikube-app:.*|vasanth31r/minikube-app:${env.BUILD_NUMBER}|' k8s/deployment.yaml"
-                    
-                    // Apply the deployment to Minikube
                     sh 'kubectl apply -f k8s/deployment.yaml'
                 }
             }
