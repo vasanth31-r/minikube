@@ -2,10 +2,9 @@ pipeline {
     agent any
 
     tools {
-sonar 'SonarScannertool'
-}
-
-
+        // Use the correct syntax for SonarScanner tool
+        hudsonPluginsSonarSonarRunnerInstallation 'SonarScannertool'
+    }
 
     stages {
         stage('Clone Repository') {
@@ -17,11 +16,8 @@ sonar 'SonarScannertool'
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // This finds the tool you configured.
                     def scannerHome = tool 'SonarScannertool'
                     
-                    // The withSonarQubeEnv step should use the name of the SonarQube server itself,
-                    // not the tool name. Use the name you configured under Manage Jenkins -> Configure System.
                     withSonarQubeEnv('My Local SonarQube') { 
                         sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
                     }
