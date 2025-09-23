@@ -1,62 +1,53 @@
 pipeline {
     agent any
 
-    environment {
-        PROJECT_IMAGE = "react-app"
+    tools {
+        sonarScanner 'SonarScanner'
     }
 
     stages {
-        stage('Checkout') {
-            steps { checkout scm }
-        }
-
-        stage('Install & Test') {
+        stage('Clone Repository') {
             steps {
-                sh 'npm ci'
-                sh 'npm run build --if-present'
+                git branch: 'master', url: 'https://github.com/vasanth31-r/minikube.git'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                      sonar-scanner \
-                        -Dsonar.projectKey=react-app \
-                        -Dsonar.sources=src \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_AUTH_TOKEN
-                    """
+                script {
+                    def scannerHome = tool 'SonarScanner'
+                    withSonarQubeEnv('SonarScanner') { // Ensure this name matches your Jenkins configuration
+                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
+                    }
+                }
+            }
+        }
+        
+        stage('Build and Push Docker Image') {
+            steps {
+                script {
+                    // Use the Minikube Docker daemon
+                    sh 'eval $(minikube docker-env)'
+                    
+                    // Build the Docker image
+                    def appImage = docker.build("vasanth31r/minikube-app:${env.BUILD_NUMBER}", "./k8s")
+                    
+                    // Push the image to the Minikube's internal Docker registry
+                    appImage.push()
                 }
             }
         }
 
-        stage('Build Docker Image (Minikube)') {
+        stage('Deploy to Minikube') {
             steps {
-                sh '''
-                  eval $(minikube -p minikube docker-env)
-                  docker build -t ${PROJECT_IMAGE}:${BUILD_NUMBER} .
-                '''
+                script {
+                    // Update the deployment.yaml with the new image tag
+                    sh "sed -i 's|vasanth31r/minikube-app:.*|vasanth31r/minikube-app:${env.BUILD_NUMBER}|' k8s/deployment.yaml"
+                    
+                    // Apply the deployment to Minikube
+                    sh 'kubectl apply -f k8s/deployment.yaml'
+                }
             }
         }
-
-        stage('Deploy to Kubernetes') {
-            steps {
-                sh '''
-                  if kubectl get deployment react-app >/dev/null 2>&1; then
-                    kubectl set image deployment/react-app react-app=${PROJECT_IMAGE}:${BUILD_NUMBER} --record
-                  else
-                    kubectl apply -f k8s/deployment.yaml
-                    kubectl set image deployment/react-app react-app=${PROJECT_IMAGE}:${BUILD_NUMBER} --record
-                  fi
-                  kubectl rollout status deployment/react-app --timeout=120s
-                '''
-            }
-        }
-    }
-
-    post {
-        success { echo "✅ Deployment successful" }
-        failure { echo "❌ Pipeline failed" }
     }
 }
