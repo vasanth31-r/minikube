@@ -2,9 +2,11 @@ pipeline {
     agent any
 
     tools {
-        // Use the correct, full tool type as per the error message.
-        // The name "SonarScannertool" must match the name you configured in Jenkins.
-        hudson.plugins.sonar.SonarRunnerInstallation 'SonarScannertool'
+        // The correct syntax is to use the tool type as the keyword.
+        // It should be 'sonarScanner' as originally intended, but we need to check Jenkins' configuration.
+        // A direct fix is to remove the tools block and use the `tool` step directly.
+        // However, if you want to use the tools block, the correct syntax is:
+        sonarScanner 'SonarScannertool'
     }
 
     stages {
@@ -17,12 +19,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 script {
-                    // This now correctly points to the tool you've named 'SonarScannertool'
                     def scannerHome = tool 'SonarScannertool'
-                    
-                    // The 'withSonarQubeEnv' should use the name you gave to the SonarQube Server itself,
-                    // not the tool. Check Manage Jenkins -> Configure System for the correct name.
-                    withSonarQubeEnv('My Local SonarQube') { 
+                    withSonarQubeEnv('My Local SonarQube') {
                         sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
                     }
                 }
