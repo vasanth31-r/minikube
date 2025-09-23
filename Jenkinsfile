@@ -2,9 +2,10 @@ pipeline {
     agent any
 
     tools {
-        // Correct syntax for the SonarScanner tool.
-        tool name: 'SonarScannertool', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
-    }
+sonar 'SonarScannertool'
+}
+
+
 
     stages {
         stage('Clone Repository') {
