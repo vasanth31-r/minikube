@@ -16,7 +16,7 @@ pipeline {
             steps {
                 script {
                     def scannerHome = tool 'SonarScanner'
-                    withSonarQubeEnv('SonarScanner') { // Ensure this name matches your Jenkins configuration
+                    withSonarQubeEnv('SonarScannertool') { // Ensure this name matches your Jenkins configuration
                         sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
                     }
                 }
