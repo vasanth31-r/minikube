@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        // Use the correct syntax for SonarScanner tool
-        hudsonPluginsSonarSonarRunnerInstallation 'SonarScannertool'
-    }
-
     stages {
         stage('Clone Repository') {
             steps {
@@ -15,12 +10,8 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    def scannerHome = tool 'SonarScannertool'
-                    
-                    withSonarQubeEnv('My Local SonarQube') { 
-                        sh "${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=."
-                    }
+                withSonarQubeEnv('My Local SonarQube') { 
+                    sh 'sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=.'
                 }
             }
         }
@@ -29,7 +20,7 @@ pipeline {
             steps {
                 script {
                     sh 'eval $(minikube docker-env)'
-                    def appImage = docker.build("vasanth31r/minikube-app:${env.BUILD_NUMBER}", "./k8s")
+                    def appImage = docker.build("vasanth31r/minikube-app:${env.BUILD_NUMBER}", "-f k8s/Dockerfile .")
                     appImage.push()
                 }
             }
@@ -42,6 +33,18 @@ pipeline {
                     sh 'kubectl apply -f k8s/deployment.yaml'
                 }
             }
+        }
+    }
+    
+    post {
+        always {
+            echo 'Pipeline completed. Cleaning up...'
+        }
+        success {
+            echo 'Pipeline succeeded!'
+        }
+        failure {
+            echo 'Pipeline failed!'
         }
     }
 }
