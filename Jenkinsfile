@@ -1,18 +1,38 @@
 pipeline {
     agent any
-
     stages {
-        stage('Clone Repository') {
+        stage('Checkout') {
             steps {
                 git branch: 'master', url: 'https://github.com/vasanth31-r/minikube.git'
             }
         }
-
+        
+        stage('Build') {
+            steps {
+                // Your build steps (e.g., npm install, npm build)
+                sh 'npm install'
+                sh 'npm run build'
+            }
+        }
+        
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('My Local SonarQube') { 
-                    sh 'sonar-scanner -Dsonar.projectKey=minikube -Dsonar.sources=.'
+                withSonarQubeEnv('My Local SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=react-app \
+                    -Dsonar.projectName="React App" \
+                    -Dsonar.sources=src \
+                    -Dsonar.language=js \
+                    -Dsonar.sourceEncoding=UTF-8
+                    '''
                 }
+            }
+        }
+        
+        stage('Quality Gate Check') {
+            steps {
+                waitForQualityGate abortPipeline: true
             }
         }
         
@@ -25,7 +45,7 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Deploy to Minikube') {
             steps {
                 script {
